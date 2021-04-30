@@ -5,89 +5,14 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"regexp"
-	"strconv"
 	"strings"
 
+	"github.com/jadudm/imls-wifi-adapter-search/config"
+	"github.com/jadudm/imls-wifi-adapter-search/models"
+	"github.com/jadudm/imls-wifi-adapter-search/search"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"gsa.gov/18f/find-ralink/config"
 	"gsa.gov/18f/find-ralink/constants"
-	"gsa.gov/18f/find-ralink/lshw"
-	"gsa.gov/18f/find-ralink/models"
 )
-
-func findMatchingDevice(wlan *models.Device) {
-	// GetDeviceHash calls out to `lshw`.
-	devices := lshw.GetDeviceHash(wlan)
-
-	// We start by assuming that we have not found the device.
-	found := false
-
-	// Now, go through the devices and find the one that matches our criteria.
-	for _, hash := range devices {
-
-		if *config.Verbose {
-			fmt.Println("---------")
-			for k, v := range hash {
-				fmt.Println(k, "<-", v)
-			}
-		}
-
-		// The default is to search all the fields
-		if wlan.Search.Field == "ALL" {
-
-			for k := range hash {
-				// Lowercase everything for purposes of pattern matching.
-				v, _ := regexp.MatchString(strings.ToLower(wlan.Search.Query), strings.ToLower(hash[k]))
-				if *config.Verbose {
-					fmt.Println("query", wlan.Search.Query, "field", wlan.Search.Field)
-				}
-				if v {
-					// If we find it, set the fact that it exists. This will be picked up
-					// back out in main() for the final act of printing a message to the user.
-					wlan.Exists = true
-				}
-				// Stop searching if we find something.
-				if wlan.Exists {
-					break
-				}
-			}
-		} else {
-			// If we aren't doing a full search, then this is the alternative: check just
-			// one field. It will still be a lowercase search, but it will be against one field only.
-			if *config.Verbose {
-				fmt.Println("query", wlan.Search.Query, "field", wlan.Search.Field)
-			}
-			v, _ := regexp.MatchString(strings.ToLower(wlan.Search.Query), strings.ToLower(hash[wlan.Search.Field]))
-			if v {
-				wlan.Exists = true
-			}
-		}
-
-		// If we find something, proceed. But only keep the first thing we find.
-		// Back in 'main', we'll handle the case where wlan.exists is false.
-		if wlan.Exists && !found {
-			found = true
-			wlan.Vendor = strings.ToLower(hash["vendor"])
-			wlan.Physicalid, _ = strconv.Atoi(hash["physical id"])
-			wlan.Description = strings.ToLower(hash["description"])
-			wlan.Businfo = strings.ToLower(hash["bus info"])
-			wlan.Logicalname = strings.ToLower(hash["logical name"])
-			wlan.Serial = strings.ToLower(hash["serial"])
-
-			if len(hash["serial"]) >= constants.MACLENGTH {
-				wlan.Mac = strings.ToLower(hash["serial"][0:constants.MACLENGTH])
-			} else {
-				wlan.Mac = strings.ToLower(hash["serial"])
-			}
-			wlan.Configuration = strings.ToLower(hash["configuration"])
-
-			// Once we populate something in this loop, break out.
-			// This will return us to the caller with a populated structure.
-			break
-		}
-	}
-}
 
 // https://stackoverflow.com/questions/18930910/access-struct-property-by-name
 // PURPOSE
@@ -104,6 +29,8 @@ func getField(v *models.Device, field string) reflect.Value {
 	f := reflect.Indirect(r).FieldByName(adjusted)
 	return f
 }
+
+var Verbose = false
 
 func main() {
 	// FLAGS
@@ -125,19 +52,21 @@ func main() {
 	// ansible integration.
 	existsPtr := flag.Bool("exists", false, "Ask if a device exists. Returns `true` or `false`.")
 	// It is possible, but unlikely, that the location of lshw will change.
-	lshwPtr := flag.String("lshw-path", config.LSHW_EXE, "Path to the `lshw` binary.")
-	searchesPtr := flag.String("searchjson-path", config.SEARCHES_PATH, "Path to a JSON file containing default searches.")
+	lshwPtr := flag.String("lshw-path", config.GetLSHWLocation(), "Path to the `lshw` binary.")
+
+	// FIXME
+	// Consider adding back in the ability to load JSON searches from the filesystem.
+	//searchesPtr := flag.String("searchjson-path", config.SEARCHES_PATH, "Path to a JSON file containing default searches.")
 	// In case we care about versioning.
 	versionPtr := flag.Bool("version", false, "Get the software version and exit.")
 	flag.Parse()
 
 	// Using a "global" indicator of verboseness.
 	// Not sure if there is a more Go-ish way to do this.
-	config.Verbose = verbosePtr
+	Verbose = *verbosePtr
 
 	// Override configuration if needed, in case things move/change names.
-	config.LSHW_EXE = *lshwPtr
-	config.SEARCHES_PATH = *searchesPtr
+	config.SetLSHWLocation(*lshwPtr)
 
 	// ROOT
 	// We can't do this without root. Some things... might work.
@@ -176,13 +105,13 @@ func main() {
 		// that are compiled in via `embed`. GetSearches pulls the "live"
 		// searches if it can, and falls back to the embedded if needed.
 		// It goes through each one-by-one.
-		for _, s := range config.GetSearches() {
-			if *config.Verbose {
+		for _, s := range search.GetSearches() {
+			if Verbose {
 				fmt.Println("search", s)
 			}
 			device.Search = &s
 			// findMatchingDevice populates device.Exists if something is found.
-			findMatchingDevice(device)
+			search.FindMatchingDevice(device)
 			// We can stop searching if we find something.
 			if device.Exists {
 				break
@@ -191,9 +120,9 @@ func main() {
 	} else {
 		// The alternative is we're not doing an exhaustive/discovery search.
 		// Therefore, we should use the field/search ptrs.
-		s := &config.Search{Field: *fieldPtr, Query: *searchPtr}
+		s := &models.Search{Field: *fieldPtr, Query: *searchPtr}
 		device.Search = s
-		findMatchingDevice(device)
+		search.FindMatchingDevice(device)
 	}
 
 	// If we asked for a true/false value, print that.
