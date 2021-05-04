@@ -1,8 +1,8 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fzipp/gocyclo v0.3.1/go.mod h1:DJHO6AUmbdqj2ET4Z9iArSuwWgYDRryYt2wASxc7x3E=
-github.com/jadudm/imls-wifi-adapter-search v0.0.0-20210430152215-15310c169eaa h1:8KHdMfBLFq1CzAsHkjxWhcezEJ/XZ9BcjhVhCBASCsc=
-github.com/jadudm/imls-wifi-adapter-search v0.0.0-20210430152215-15310c169eaa/go.mod h1:EqETZbwV6IRil+PRaDbKp7dZpl28h+OM8cJZvYBykPU=
+github.com/jadudm/imls-wifi-adapter-search v0.0.2 h1:flHrF3oCBeNU5dyL8DEG69NGMWpy6mTmbIB3hVGVxus=
+github.com/jadudm/imls-wifi-adapter-search v0.0.2/go.mod h1:EqETZbwV6IRil+PRaDbKp7dZpl28h+OM8cJZvYBykPU=
 github.com/jedib0t/go-pretty/v6 v6.1.0 h1:NVS2PT3ZvzMb47DzS50cmsK6xkf8SSyLfroSSIG20JI=
 github.com/jedib0t/go-pretty/v6 v6.1.0/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoMwqZnuiK2r2a0=
 github.com/mattn/go-runewidth v0.0.9 h1:Lm995f3rfxdpd6TSmuVCHVb/QhupuXlYr8sCI/QdE+0=
